@@ -32,7 +32,7 @@ typedef struct {
 #define DS18B20_FUNC_PARASITE_POWER       0xB4
 #define DS18B20_FUNC_RECALL_E2            0xB8
 
-int8_t  DS18B20_initDevice(wire1_ds18b20_t *wire1);
+int8_t DS18B20_init(wire1_ds18b20_t *wire1, uint8_t *const address);
 int8_t  DS18B20_usesParasitePower(wire1_ds18b20_t *wire1,
                                   uint8_t *usesParasitePower);
 void    DS18B20_setAlarmTempH(wire1_ds18b20_t *wire1, int8_t tempH);

@@ -6,8 +6,16 @@
 // For memcpy
 #include <string.h>
 
-#define DS18B20_SELECT_DEVICE_CHECK  if (wire1MatchROM(wire1->address)) \
-                                     {return -1;}
+#define DS18B20_SELECT_DEVICE_CHECK(device) \
+          {\
+            uint8_t _ds_address[8];   \
+            _ds_address[0] = DS18B20; \
+            memcpy(&_ds_address[1], device->address, 6);   \
+            _ds_address[W1_ADDR_BYTE_CRC] = \
+              crc8(0x00, W1_CRC_POLYNOMIAL, _ds_address, 7); \
+            if (wire1MatchROM(_ds_address)) \
+              return -1; \
+          }
 
 /**
  * Initialize the memory area for the device and set the address.
@@ -22,7 +30,7 @@ int8_t DS18B20_init(wire1_ds18b20_t *wire1, uint8_t *const address) {
       crc8(0, W1_CRC_POLYNOMIAL, address, 7) != address[W1_ADDR_BYTE_CRC]) {
     return -1;
   } else {
-    memcpy(&address[1], wire1->address, 6);
+    memcpy(wire1->address, &address[1], 6);
     wire1->status      |= BV(DS18B20_STATUS_ADDRESS_BIT);
     wire1->status_init |= BV(DS18B20_STATUS_ADDRESS_BIT);
 
@@ -47,7 +55,7 @@ int8_t DS18B20_usesParasitePower(wire1_ds18b20_t *wire1,
   if (wire1->status_init & BV(W1_STATUS_PARASITE_POWER_BIT)) {
     return wire1->status & BV(W1_STATUS_PARASITE_POWER_BIT);
   } else {
-    DS18B20_SELECT_DEVICE_CHECK;
+    DS18B20_SELECT_DEVICE_CHECK(wire1);
     wire1WriteByte(DS18B20_FUNC_PARASITE_POWER);
     uint8_t parasitePower = wire1ReadPowerSupply();
     wire1->status_init |= BV(W1_STATUS_PARASITE_POWER_BIT);
@@ -114,7 +122,7 @@ inline uint8_t DS18B20_getResolution(wire1_ds18b20_t *const wire1) {
  * @return       0 if OK; -1 if Match ROM failed, 1 if CRC failed
  */
 int8_t DS18B20_readScratchpad(wire1_ds18b20_t *const wire1) {
-  DS18B20_SELECT_DEVICE_CHECK;
+  DS18B20_SELECT_DEVICE_CHECK(wire1);
   wire1WriteByte(DS18B20_FUNC_READ_SCRATCHPAD);
   for (int i = 0; i < 8; i++) {
     wire1->scratchPad[i] = wire1ReadByte();
@@ -138,7 +146,7 @@ int8_t DS18B20_readScratchpad(wire1_ds18b20_t *const wire1) {
  * @return       0 if OK; -1 if Match ROM failed
  */
 int8_t DS18B20_writeScratchpad(wire1_ds18b20_t *const wire1) {
-  DS18B20_SELECT_DEVICE_CHECK;
+  DS18B20_SELECT_DEVICE_CHECK(wire1);
   wire1WriteByte(DS18B20_FUNC_WRITE_SCRATCHPAD);
   for (int i  = DS18B20_SCRATCHPAD_BYTE_ALARM_TH;
            i <= DS18B20_SCRATCHPAD_BYTE_CONF; i++) {
@@ -153,7 +161,7 @@ int8_t DS18B20_writeScratchpad(wire1_ds18b20_t *const wire1) {
  * @return       0 if OK; -1 if Match ROM failed
  */
 int8_t DS18B20_convertTemperature(wire1_ds18b20_t *const wire1) {
-  DS18B20_SELECT_DEVICE_CHECK;
+  DS18B20_SELECT_DEVICE_CHECK(wire1);
   wire1WriteByte(DS18B20_FUNC_START_CONV);
   // Update status to force a re-read the temperature
   wire1->status |= BV(DS18B20_STATUS_CONV_STARTED_BIT);
